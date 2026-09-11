@@ -1,0 +1,3 @@
+# Optional starter scores for the static leaderboard.
+# Format: YYYY-MM-DD|name|score|words|pangram
+# Only entries for today's UTC date are loaded. Browser-submitted scores remain local.

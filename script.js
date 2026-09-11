@@ -182,8 +182,8 @@
   let currentWord = "";
   let foundWords = []; // { word, points, pangram }
   let score = 0;
-  let roundDuration = 120;
-  let timeLeft = 120;
+  const ROUND_DURATION = 90;
+  let timeLeft = ROUND_DURATION;
   let timerHandle = null;
   let roundActive = false;
 
@@ -199,7 +199,6 @@
   const playScreen = $("playScreen");
   const endScreen = $("endScreen");
 
-  const durationBtns = document.querySelectorAll(".duration-btn");
   const startBtn = $("startBtn");
 
   const scoreValueEl = $("scoreValue");
@@ -427,7 +426,7 @@
     score = 0;
     foundWords = [];
     currentWord = "";
-    timeLeft = roundDuration;
+    timeLeft = ROUND_DURATION;
     roundActive = true;
 
     renderHive();
@@ -469,8 +468,10 @@
   }
 
   /* ------------------------------------------------------------------
-     Leaderboard (localStorage, scoped to today's date)
+     Leaderboard (seeded from a text file, then persisted locally)
      ------------------------------------------------------------------ */
+  const LEADERBOARD_SEED_URL = "leaderboard.txt";
+
   function leaderboardKey() {
     return `wordhive-leaderboard-${dateStr}`;
   }
@@ -488,7 +489,51 @@
     try {
       localStorage.setItem(leaderboardKey(), JSON.stringify(entries));
     } catch (e) {
-      /* storage unavailable — ignore */
+      console.warn("Word Hive could not save leaderboard entries.", e);
+    }
+  }
+
+  function parseLeaderboardSeed(text) {
+    return text.split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line && !line.startsWith("#"))
+      .map((line) => {
+        const [date, name, scoreText, wordsText, pangramText] = line.split("|");
+        const scoreValue = Number(scoreText);
+        const wordCount = Number(wordsText);
+        if (date !== dateStr || !name || !Number.isFinite(scoreValue) ||
+            !Number.isInteger(wordCount) || wordCount < 0) return null;
+        return {
+          name: name.trim().slice(0, 20) || "Anonymous",
+          score: Math.max(0, Math.floor(scoreValue)),
+          words: wordCount,
+          pangram: pangramText === "true",
+          ts: 0
+        };
+      })
+      .filter(Boolean);
+  }
+
+  async function loadLeaderboardSeed() {
+    try {
+      const response = await fetch(LEADERBOARD_SEED_URL, { cache: "no-store" });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const seededEntries = parseLeaderboardSeed(await response.text());
+      if (seededEntries.length === 0) return;
+
+      const localEntries = loadLeaderboard();
+      const seen = new Set();
+      const entries = [...seededEntries, ...localEntries].filter((entry) => {
+        const key = `${entry.name}|${entry.score}|${entry.words}|${entry.pangram}|${entry.ts === 0 ? "seed" : entry.ts}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+      entries.sort((a, b) => b.score - a.score || a.ts - b.ts);
+      saveLeaderboard(entries.slice(0, 50));
+      renderLeaderboard();
+    } catch (e) {
+      console.warn("Word Hive could not load leaderboard.txt; using local scores.", e);
     }
   }
 
@@ -535,14 +580,6 @@
   /* ------------------------------------------------------------------
      Event wiring
      ------------------------------------------------------------------ */
-  durationBtns.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      durationBtns.forEach((b) => b.classList.remove("is-selected"));
-      btn.classList.add("is-selected");
-      roundDuration = parseInt(btn.dataset.duration, 10);
-    });
-  });
-
   startBtn.addEventListener("click", startRound);
   playAgainBtn.addEventListener("click", () => {
     startScreen.classList.remove("hidden");
@@ -591,4 +628,5 @@
      Init
      ------------------------------------------------------------------ */
   renderLeaderboard();
+  loadLeaderboardSeed();
 })();
