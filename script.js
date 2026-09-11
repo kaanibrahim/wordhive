@@ -627,6 +627,7 @@
   /* ------------------------------------------------------------------
      Init
      ------------------------------------------------------------------ */
+  timerValueEl.textContent = formatTime(ROUND_DURATION);
   renderLeaderboard();
   loadLeaderboardSeed();
 })();
