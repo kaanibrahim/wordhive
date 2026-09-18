@@ -212,6 +212,7 @@
   const entryPlaceholderEl = $("entryPlaceholder");
 
   const deleteBtn = $("deleteBtn");
+  const clearBtn = $("clearBtn");
   const shuffleBtn = $("shuffleBtn");
   const enterBtn = $("enterBtn");
 
@@ -329,36 +330,37 @@
     renderEntry();
   }
 
+  function rejectWord(text) {
+    showMessage(text, "bad");
+    shakeEntry();
+    clearEntry();
+  }
+
   function submitWord() {
     if (!roundActive) return;
     const word = currentWord.toLowerCase();
 
     if (word.length === 0) return;
     if (word.length < 4) {
-      showMessage("Too short — 4 letters minimum", "bad");
-      shakeEntry();
+      rejectWord("Too short — 4 letters minimum");
       return;
     }
     if (!word.includes(puzzle.center)) {
-      showMessage(`Missing center letter "${puzzle.center.toUpperCase()}"`, "bad");
-      shakeEntry();
+      rejectWord(`Missing center letter "${puzzle.center.toUpperCase()}"`);
       return;
     }
     const allowed = new Set(puzzle.letters);
     const hasOnlyAllowed = [...word].every((c) => allowed.has(c));
     if (!hasOnlyAllowed) {
-      showMessage("Uses letters outside the hive", "bad");
-      shakeEntry();
+      rejectWord("Uses letters outside the hive");
       return;
     }
     if (foundWords.some((f) => f.word === word)) {
-      showMessage("Already found that one", "bad");
-      shakeEntry();
+      rejectWord("Already found that one");
       return;
     }
     if (!WORD_SET.has(word)) {
-      showMessage("Not in the word list", "bad");
-      shakeEntry();
+      rejectWord("Not in the word list");
       return;
     }
 
@@ -587,6 +589,7 @@
   });
 
   deleteBtn.addEventListener("click", deleteLetter);
+  clearBtn.addEventListener("click", clearEntry);
   shuffleBtn.addEventListener("click", () => {
     shuffleBtn.classList.remove("is-spinning");
     void shuffleBtn.offsetWidth;
