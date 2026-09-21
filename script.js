@@ -47,8 +47,7 @@
     return `${year}-${month}-${day}`;
   }
 
-  function msUntilNextLocalMidnight() {
-    const now = new Date();
+  function msUntilNextLocalMidnight(now = new Date()) {
     const next = new Date(now);
     next.setHours(24, 0, 0, 0);
     return next.getTime() - now.getTime();
@@ -254,14 +253,15 @@
       window.location.reload();
       return;
     }
-    const totalSec = Math.floor(ms / 1000);
+    // Round up so the display never claims midnight has arrived early.
+    const totalSec = Math.ceil(ms / 1000);
     const h = String(Math.floor(totalSec / 3600)).padStart(2, "0");
     const m = String(Math.floor((totalSec % 3600) / 60)).padStart(2, "0");
     const s = String(totalSec % 60).padStart(2, "0");
     nextHiveEl.textContent = `${h}:${m}:${s}`;
   }
   tickNextHive();
-  setInterval(tickNextHive, 1000);
+  setInterval(tickNextHive, 250);
 
   /* ------------------------------------------------------------------
      Render honeycomb
