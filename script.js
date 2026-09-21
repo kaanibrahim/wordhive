@@ -485,9 +485,11 @@
   }
 
   /* ------------------------------------------------------------------
-     Leaderboard (seeded from a text file, then persisted locally)
+     Leaderboard (shared through Supabase, with a local fallback)
      ------------------------------------------------------------------ */
   const LEADERBOARD_SEED_URL = "leaderboard.txt";
+  const supabaseConfig = window.WORDHIVE_SUPABASE || {};
+  const supabaseEnabled = Boolean(supabaseConfig.url && supabaseConfig.anonKey);
 
   function leaderboardKey() {
     return `wordhive-leaderboard-${dateStr}`;
@@ -508,6 +510,59 @@
     } catch (e) {
       console.warn("Word Hive could not save leaderboard entries.", e);
     }
+  }
+
+  function leaderboardHeaders() {
+    return {
+      apikey: supabaseConfig.anonKey,
+      Authorization: `Bearer ${supabaseConfig.anonKey}`,
+      "Content-Type": "application/json"
+    };
+  }
+
+  async function loadSharedLeaderboard() {
+    if (!supabaseEnabled) return false;
+
+    const url = `${supabaseConfig.url.replace(/\/$/, "")}/rest/v1/leaderboard` +
+      `?select=name,score,words,pangram,created_at&date=eq.${dateStr}` +
+      "&order=score.desc,created_at.asc&limit=50";
+    const response = await fetch(url, {
+      headers: leaderboardHeaders(),
+      cache: "no-store"
+    });
+    if (!response.ok) {
+      throw new Error(`Supabase leaderboard request failed (${response.status})`);
+    }
+
+    const sharedEntries = await response.json();
+    saveLeaderboard(sharedEntries.map((entry) => ({
+      name: String(entry.name).slice(0, 20) || "Anonymous",
+      score: Math.max(0, Math.floor(Number(entry.score) || 0)),
+      words: Math.max(0, Math.floor(Number(entry.words) || 0)),
+      pangram: entry.pangram === true,
+      ts: Date.parse(entry.created_at) || 0
+    })));
+    renderLeaderboard();
+    return true;
+  }
+
+  async function saveSharedLeaderboard(name, entryScore, wordCount, pangram) {
+    const url = `${supabaseConfig.url.replace(/\/$/, "")}/rest/v1/leaderboard`;
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { ...leaderboardHeaders(), Prefer: "return=minimal" },
+      body: JSON.stringify({
+        date: dateStr,
+        name: name.slice(0, 20),
+        score: entryScore,
+        words: wordCount,
+        pangram
+      })
+    });
+    if (!response.ok) {
+      throw new Error(`Supabase score submission failed (${response.status})`);
+    }
+    await loadSharedLeaderboard();
   }
 
   function parseLeaderboardSeed(text) {
@@ -554,7 +609,7 @@
     }
   }
 
-  function addLeaderboardEntry(name, entryScore, wordCount, pangram) {
+  function addLocalLeaderboardEntry(name, entryScore, wordCount, pangram) {
     const entries = loadLeaderboard();
     entries.push({ name, score: entryScore, words: wordCount, pangram, ts: Date.now() });
     entries.sort((a, b) => b.score - a.score);
@@ -634,12 +689,27 @@
     }
   });
 
-  submitScoreForm.addEventListener("submit", (e) => {
+  submitScoreForm.addEventListener("submit", async (e) => {
     e.preventDefault();
     const name = playerNameInput.value.trim() || "Anonymous";
     const hasPangram = foundWords.some((f) => f.pangram);
-    addLeaderboardEntry(name, score, foundWords.length, hasPangram);
-    saveConfirmEl.classList.remove("hidden");
+    const saveButton = submitScoreForm.querySelector("button[type='submit']");
+    saveButton.disabled = true;
+    try {
+      if (supabaseEnabled) {
+        await saveSharedLeaderboard(name, score, foundWords.length, hasPangram);
+      } else {
+        addLocalLeaderboardEntry(name, score, foundWords.length, hasPangram);
+      }
+      saveConfirmEl.textContent = "Saved to the leaderboard.";
+      saveConfirmEl.classList.remove("hidden");
+    } catch (error) {
+      console.warn("Word Hive could not save the shared score.", error);
+      saveConfirmEl.textContent = "Could not save the score. Please try again.";
+      saveConfirmEl.classList.remove("hidden");
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 
   /* ------------------------------------------------------------------
@@ -647,5 +717,12 @@
      ------------------------------------------------------------------ */
   timerValueEl.textContent = formatTime(ROUND_DURATION);
   renderLeaderboard();
-  loadLeaderboardSeed();
+  loadLeaderboardSeed().then(async () => {
+    if (!supabaseEnabled) return;
+    try {
+      await loadSharedLeaderboard();
+    } catch (error) {
+      console.warn("Word Hive could not load the shared leaderboard.", error);
+    }
+  });
 })();
