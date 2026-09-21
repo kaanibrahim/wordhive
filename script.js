@@ -40,7 +40,7 @@
      Date helpers — puzzle rolls over at Europe/London midnight
      ------------------------------------------------------------------ */
   const HIVE_TIME_ZONE = "Europe/London";
-  const hiveDateFormatter = new Intl.DateTimeFormat("en-CA", {
+  const hivePartsFormatter = new Intl.DateTimeFormat("en-GB", {
     timeZone: HIVE_TIME_ZONE,
     year: "numeric",
     month: "2-digit",
@@ -48,29 +48,39 @@
   });
 
   function todayHiveString(now = new Date()) {
-    return hiveDateFormatter.format(now);
+    const parts = hivePartsFormatter.formatToParts(now);
+    const year = parts.find((part) => part.type === "year").value;
+    const month = parts.find((part) => part.type === "month").value;
+    const day = parts.find((part) => part.type === "day").value;
+    return `${year}-${month}-${day}`;
   }
 
   function msUntilNextHiveMidnight(now = new Date()) {
-    const currentDate = todayHiveString(now);
-    const nextDate = new Date(`${currentDate}T12:00:00Z`);
+    const nextDate = new Date(`${todayHiveString(now)}T00:00:00Z`);
     nextDate.setUTCDate(nextDate.getUTCDate() + 1);
 
     // Find the exact UTC instant whose London clock reads 00:00. This
     // handles both GMT and BST without relying on the user's timezone.
-    let candidate = nextDate.getTime() - 12 * 60 * 60 * 1000;
+    let candidate = nextDate.getTime();
     for (let i = 0; i < 4; i++) {
       const parts = new Intl.DateTimeFormat("en-GB", {
         timeZone: HIVE_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
         hourCycle: "h23"
       }).formatToParts(new Date(candidate));
+      const year = Number(parts.find((part) => part.type === "year").value);
+      const month = Number(parts.find((part) => part.type === "month").value);
+      const day = Number(parts.find((part) => part.type === "day").value);
       const hour = Number(parts.find((part) => part.type === "hour").value);
       const minute = Number(parts.find((part) => part.type === "minute").value);
       const second = Number(parts.find((part) => part.type === "second").value);
-      candidate -= ((hour * 60 + minute) * 60 + second) * 1000;
+      const displayedAsUTC = Date.UTC(year, month - 1, day, hour, minute, second);
+      candidate -= displayedAsUTC - nextDate.getTime();
     }
     return candidate - now.getTime();
   }
