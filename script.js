@@ -239,6 +239,14 @@
   leaderboardDateEl.textContent = formatDateHuman(dateStr);
 
   function tickNextHive() {
+    // The countdown is calculated from the current time, so it remains
+    // positive after midnight. Detect the date rollover separately so the
+    // puzzle and leaderboard refresh for the new hive.
+    if (todayUTCString() !== dateStr) {
+      window.location.reload();
+      return;
+    }
+
     const ms = msUntilNextUTCMidnight();
     if (ms <= 0) {
       window.location.reload();
