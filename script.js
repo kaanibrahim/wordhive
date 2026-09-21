@@ -256,6 +256,21 @@
   /* ------------------------------------------------------------------
      Render honeycomb
      ------------------------------------------------------------------ */
+  function wireLetterButton(button, ch) {
+    button.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse") {
+        event.preventDefault();
+        tapLetter(ch);
+      }
+    });
+    button.addEventListener("click", (event) => {
+      // Pointer activation handles touch and pen input immediately.
+      if (event.detail === 0 || !("PointerEvent" in window)) {
+        tapLetter(ch);
+      }
+    });
+  }
+
   function renderHive() {
     hiveEl.innerHTML = "";
 
@@ -264,7 +279,7 @@
     centerBtn.className = "hex-btn is-center hex-pos-0";
     centerBtn.textContent = puzzle.center.toUpperCase();
     centerBtn.setAttribute("aria-label", `Letter ${puzzle.center.toUpperCase()} (required)`);
-    centerBtn.addEventListener("click", () => tapLetter(puzzle.center));
+    wireLetterButton(centerBtn, puzzle.center);
     hiveEl.appendChild(centerBtn);
 
     const outer = displayOrder.filter((c) => c !== puzzle.center);
@@ -274,7 +289,7 @@
       btn.className = `hex-btn hex-pos-${i + 1}`;
       btn.textContent = c.toUpperCase();
       btn.setAttribute("aria-label", `Letter ${c.toUpperCase()}`);
-      btn.addEventListener("click", () => tapLetter(c));
+      wireLetterButton(btn, c);
       hiveEl.appendChild(btn);
     });
   }

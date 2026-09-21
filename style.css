@@ -22,7 +22,7 @@
   --font-display: "Fredoka", ui-rounded, "Segoe UI", sans-serif;
   --font-body: "Nunito Sans", "Segoe UI", sans-serif;
 
-  --hs: clamp(52px, 15vw, 84px); /* hex flat width, drives whole honeycomb scale */
+  --hs: clamp(64px, 19vw, 104px); /* hex flat width, drives whole honeycomb scale */
   --radius-sm: 10px;
   --radius-md: 16px;
 }
@@ -284,6 +284,7 @@ body {
   justify-content: center;
   transition: transform 0.08s ease, background-color 0.15s ease;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
   user-select: none;
 }
 .hex-btn::after {
