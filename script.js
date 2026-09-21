@@ -37,25 +37,27 @@
   }
 
   /* ------------------------------------------------------------------
-     Date helpers — puzzle rolls over at 00:00 GMT/UTC
+     Date helpers — puzzle rolls over at local midnight
      ------------------------------------------------------------------ */
-  function todayUTCString() {
+  function todayLocalString() {
     const now = new Date();
-    return now.toISOString().slice(0, 10); // YYYY-MM-DD in UTC
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
   }
 
-  function msUntilNextUTCMidnight() {
+  function msUntilNextLocalMidnight() {
     const now = new Date();
-    const next = new Date(Date.UTC(
-      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0
-    ));
+    const next = new Date(now);
+    next.setHours(24, 0, 0, 0);
     return next.getTime() - now.getTime();
   }
 
   function formatDateHuman(dateStr) {
-    const d = new Date(dateStr + "T00:00:00Z");
+    const d = new Date(dateStr + "T00:00:00");
     return d.toLocaleDateString("en-US", {
-      weekday: "long", month: "short", day: "numeric", year: "numeric", timeZone: "UTC"
+      weekday: "long", month: "short", day: "numeric", year: "numeric"
     });
   }
 
@@ -174,7 +176,7 @@
   /* ------------------------------------------------------------------
      App state
      ------------------------------------------------------------------ */
-  const dateStr = todayUTCString();
+  const dateStr = todayLocalString();
   const puzzle = generatePuzzle(dateStr);
   const maxScore = puzzle.valid.reduce((sum, w) => sum + scoreWord(w, puzzle.allowedMask), 0);
 
@@ -242,12 +244,12 @@
     // The countdown is calculated from the current time, so it remains
     // positive after midnight. Detect the date rollover separately so the
     // puzzle and leaderboard refresh for the new hive.
-    if (todayUTCString() !== dateStr) {
+    if (todayLocalString() !== dateStr) {
       window.location.reload();
       return;
     }
 
-    const ms = msUntilNextUTCMidnight();
+    const ms = msUntilNextLocalMidnight();
     if (ms <= 0) {
       window.location.reload();
       return;
