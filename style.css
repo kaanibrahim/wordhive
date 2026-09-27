@@ -27,11 +27,13 @@
   --radius-md: 16px;
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+  touch-action: manipulation;
+}
 
 html {
   -webkit-text-size-adjust: 100%;
-  touch-action: manipulation;
 }
 
 body {
