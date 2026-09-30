@@ -555,6 +555,17 @@
     }
   }
 
+  function uniqueLeaderboardEntries(entries) {
+    const sorted = entries.slice().sort((a, b) => b.score - a.score || a.ts - b.ts);
+    const seenNames = new Set();
+    return sorted.filter((entry) => {
+      const key = entry.name.trim().toLocaleLowerCase();
+      if (seenNames.has(key)) return false;
+      seenNames.add(key);
+      return true;
+    });
+  }
+
   function leaderboardHeaders() {
     return {
       apikey: supabaseConfig.anonKey,
@@ -568,7 +579,7 @@
 
     const url = `${supabaseConfig.url.replace(/\/$/, "")}/rest/v1/leaderboard` +
       `?select=name,score,words,pangram,created_at&date=eq.${dateStr}` +
-      "&order=score.desc,created_at.asc&limit=50";
+      "&order=score.desc,created_at.asc&limit=1000";
     const response = await fetch(url, {
       headers: leaderboardHeaders(),
       cache: "no-store"
@@ -578,13 +589,13 @@
     }
 
     const sharedEntries = await response.json();
-    saveLeaderboard(sharedEntries.map((entry) => ({
+    saveLeaderboard(uniqueLeaderboardEntries(sharedEntries.map((entry) => ({
       name: String(entry.name).slice(0, 20) || "Anonymous",
       score: Math.max(0, Math.floor(Number(entry.score) || 0)),
       words: Math.max(0, Math.floor(Number(entry.words) || 0)),
       pangram: entry.pangram === true,
       ts: Date.parse(entry.created_at) || 0
-    })));
+    }))).slice(0, 50));
     renderLeaderboard();
     return true;
   }
@@ -644,8 +655,7 @@
         seen.add(key);
         return true;
       });
-      entries.sort((a, b) => b.score - a.score || a.ts - b.ts);
-      saveLeaderboard(entries.slice(0, 50));
+      saveLeaderboard(uniqueLeaderboardEntries(entries).slice(0, 50));
       renderLeaderboard();
     } catch (e) {
       console.warn("Word Hive could not load leaderboard.txt; using local scores.", e);
@@ -655,13 +665,12 @@
   function addLocalLeaderboardEntry(name, entryScore, wordCount, pangram) {
     const entries = loadLeaderboard();
     entries.push({ name, score: entryScore, words: wordCount, pangram, ts: Date.now() });
-    entries.sort((a, b) => b.score - a.score);
-    saveLeaderboard(entries.slice(0, 50));
+    saveLeaderboard(uniqueLeaderboardEntries(entries).slice(0, 50));
     renderLeaderboard();
   }
 
   function renderLeaderboard() {
-    const entries = loadLeaderboard().slice(0, 10);
+    const entries = uniqueLeaderboardEntries(loadLeaderboard()).slice(0, 20);
     leaderboardListEl.innerHTML = "";
     leaderboardEmptyEl.classList.toggle("hidden", entries.length > 0);
 
