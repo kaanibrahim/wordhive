@@ -124,12 +124,18 @@
   /* ------------------------------------------------------------------
      Daily puzzle generation
      ------------------------------------------------------------------ */
+  function puzzleQuality({ valid, pangramCount }) {
+    return valid.length * 10 + pangramCount * 100;
+  }
+
   function generatePuzzle(dateStr) {
     const rng = mulberry32(hashString(dateStr));
-    const MIN_WORDS = 25;
+    const MIN_WORDS = 30;
+    const MAX_ATTEMPTS = 2000;
     let best = null;
+    let bestQualified = null;
 
-    for (let attempt = 0; attempt < 500; attempt++) {
+    for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
       const pool = seededShuffle(FREQ_POOL.slice(), rng);
       const chosen = [];
       const seen = new Set();
@@ -158,15 +164,32 @@
         if (wm === allowedMask) pangramCount++;
       }
 
-      if (!best || valid.length > best.valid.length) {
-        best = { letters: chosen.slice(), center, valid, pangramCount, allowedMask };
+      const candidate = { letters: chosen.slice(), center, valid, pangramCount, allowedMask };
+      if (!best || puzzleQuality(candidate) > puzzleQuality(best)) {
+        best = candidate;
       }
-
       if (valid.length >= MIN_WORDS && pangramCount >= 1) {
-        return { letters: chosen, center, valid, pangramCount, allowedMask };
+        if (!bestQualified || puzzleQuality(candidate) > puzzleQuality(bestQualified)) {
+          bestQualified = candidate;
+        }
       }
     }
-    return best;
+
+    if (bestQualified) {
+      return bestQualified;
+    }
+
+    if (best) {
+      return best;
+    }
+
+    return {
+      letters: ["a", "e", "i", "o", "l", "n", "s"],
+      center: "a",
+      valid: [],
+      pangramCount: 0,
+      allowedMask: 0
+    };
   }
 
   /* ------------------------------------------------------------------
