@@ -101,10 +101,9 @@
   const LETTER_FREQ = { a:9,b:2,c:2,d:4,e:12,f:2,g:3,h:2,i:9,j:1,k:1,l:4,m:2,
     n:6,o:8,p:2,q:1,r:6,s:4,t:6,u:4,v:2,w:2,x:1,y:2,z:1 };
 
-  const FREQ_POOL = [];
-  Object.keys(LETTER_FREQ).forEach((c) => {
-    for (let i = 0; i < LETTER_FREQ[c]; i++) FREQ_POOL.push(c);
-  });
+  // Use the full alphabet rather than a frequency-heavy pool so the daily
+  // letter set isn't anchored to the same few common letters every time.
+  const LETTER_POOL = Object.keys(LETTER_FREQ);
 
   function letterBit(ch) {
     return 1 << (ch.charCodeAt(0) - 97);
@@ -136,7 +135,7 @@
     let bestQualified = null;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-      const pool = seededShuffle(FREQ_POOL.slice(), rng);
+      const pool = seededShuffle(LETTER_POOL.slice(), rng);
       const chosen = [];
       const seen = new Set();
       for (let i = 0; i < pool.length && chosen.length < 7; i++) {
