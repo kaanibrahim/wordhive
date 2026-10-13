@@ -258,7 +258,7 @@ body {
 .hive-wrap {
   display: flex;
   justify-content: center;
-  padding: 10px 0 18px;
+  padding: 10px 0 4px;
 }
 
 .hive {
